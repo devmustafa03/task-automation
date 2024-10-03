@@ -33,8 +33,7 @@ groq_client = groq.Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 app = FastHTML()
 
-def generate_task():
-    global task_id_counter
+def generate_task_name():
     prompt = "Generate a random task for a software development team. Respond with just the task name, nothing else."
     
     chat_completion = groq_client.chat.completions.create(
@@ -47,7 +46,11 @@ def generate_task():
         model="llama3-8b-8192",
     )
 
-    task_name = chat_completion.choices[0].message.content.strip()
+    return chat_completion.choices[0].message.content.strip()
+
+def generate_task():
+    global task_id_counter
+    task_name = generate_task_name()
     print(f"Generated task: {task_name}")
     new_task = Task(
         id=task_id_counter,
@@ -80,6 +83,21 @@ def delete_task(task_id):
     global tasks
     tasks = [task for task in tasks if task.id != task_id]
 
+def update_task(task_id, new_name=None):
+    for task in tasks:
+        if task.id == task_id:
+            if new_name is None:
+                new_name = generate_task_name()
+            task.name = new_name
+            return task
+    return None
+
+def update_longest_deadline_task():
+    if tasks:
+        longest_deadline_task = max(tasks, key=lambda t: t.deadline)
+        return update_task(longest_deadline_task.id)
+    return None
+
 @app.get("/")
 def home():
     return Main(
@@ -108,6 +126,9 @@ def home():
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
+                                        <button onclick="updateTask(${task.id})" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded mr-2">
+                                            Update
+                                        </button>
                                         <button onclick="deleteTask(${task.id})" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded">
                                             Delete
                                         </button>
@@ -125,8 +146,18 @@ def home():
                         .then(() => updateTasks());
                 }
                 
+                function updateTask(taskId) {
+                    fetch(`/update_task/${taskId}`, { method: 'POST' })
+                        .then(() => updateTasks());
+                }
+                
                 function deleteLongestDeadlineTask() {
                     fetch('/delete_longest_deadline_task', { method: 'POST' })
+                        .then(() => updateTasks());
+                }
+                
+                function updateLongestDeadlineTask() {
+                    fetch('/update_longest_deadline_task', { method: 'POST' })
                         .then(() => updateTasks());
                 }
                 
@@ -146,7 +177,12 @@ def home():
                     Button(
                         "Delete Longest Deadline Task",
                         onclick="deleteLongestDeadlineTask()",
-                        cls="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4"
+                        cls="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4 mr-2"
+                    ),
+                    Button(
+                        "Update Longest Deadline Task",
+                        onclick="updateLongestDeadlineTask()",
+                        cls="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4"
                     ),
                     cls="text-center"
                 ),
@@ -189,10 +225,20 @@ def delete_task_endpoint(task_id: int):
     delete_task(task_id)
     return "Task deleted"
 
+@app.post("/update_task/{task_id}")
+def update_task_endpoint(task_id: int):
+    updated_task = update_task(task_id)
+    return f"Task updated: {updated_task.name}" if updated_task else "Task not found"
+
 @app.post("/delete_longest_deadline_task")
 def delete_longest_deadline_task_endpoint():
     deleted_task_id = delete_longest_deadline_task()
     return f"Task with ID {deleted_task_id} deleted" if deleted_task_id else "No tasks to delete"
+
+@app.post("/update_longest_deadline_task")
+def update_longest_deadline_task_endpoint():
+    updated_task = update_longest_deadline_task()
+    return f"Task updated: {updated_task.name}" if updated_task else "No tasks to update"
 
 if __name__ == "__main__":
     try:
