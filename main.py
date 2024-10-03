@@ -1,7 +1,5 @@
 from fasthtml.common import *
 import random
-import threading
-import time
 from datetime import datetime
 from dataclasses import dataclass
 from enum import Enum
@@ -60,14 +58,6 @@ def generate_task():
     )
     task_id_counter += 1
     tasks.append(new_task)
-
-def task_generator_thread():
-    while True:
-        try:
-            time.sleep(30)
-        except Exception as e:
-            print(f"Error generating task: {e}")
-            time.sleep(30)
 
 def delete_longest_deadline_task():
     if tasks:
@@ -158,7 +148,7 @@ def home():
                         .then(() => updateTasks());
                 }
                 
-                setInterval(updateTasks, 5000);
+                setInterval(updateTasks, 30000);
                 updateTasks();
             """)
         ),
@@ -207,7 +197,6 @@ def home():
 @app.get("/get_tasks")
 def get_tasks():
     generate_task()
-    time.sleep(30)
     return json.dumps({
         "tasks": [
             {
@@ -242,10 +231,6 @@ def update_longest_deadline_task_endpoint():
 if __name__ == "__main__":
     try:
         generate_task()
-        
-        generator = threading.Thread(target=task_generator_thread, daemon=True)
-        generator.start()
-        
         serve()
     except Exception as e:
         print(f"An error occurred: {e}")
