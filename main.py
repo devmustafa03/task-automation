@@ -55,18 +55,15 @@ def generate_task():
     new_task = Task(
         id=task_id_counter,
         name=task_name,
-        deadline=random.randint(1, 7),
+        deadline=random.randint(0, 999),
         status=random.choice([TaskStatus.DONE, TaskStatus.NOT_DONE]),
     )
     task_id_counter += 1
     tasks.append(new_task)
-    if len(tasks) > 10:
-        tasks.pop(0)
 
 def task_generator_thread():
     while True:
         try:
-            generate_task()
             time.sleep(30)
         except Exception as e:
             print(f"Error generating task: {e}")
@@ -209,6 +206,8 @@ def home():
 
 @app.get("/get_tasks")
 def get_tasks():
+    generate_task()
+    time.sleep(30)
     return json.dumps({
         "tasks": [
             {
