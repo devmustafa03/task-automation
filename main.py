@@ -21,9 +21,11 @@ class Task:
     name: str
     deadline: int
     status: TaskStatus
+    greenTask: str
+    redTask: str
 
 tasks: List[Task] = [
-    Task(1, "Create a new landing page", 3, TaskStatus.NOT_DONE),
+    # Task(1, "Create a new landing page", 3, TaskStatus.NOT_DONE),
 ]
 task_id_counter = 2
 
@@ -55,6 +57,9 @@ def generate_task():
         name=task_name,
         deadline=random.randint(0, 999),
         status=random.choice([TaskStatus.DONE, TaskStatus.NOT_DONE]),
+        greenTask = "",
+        redTask=""
+        
     )
     task_id_counter += 1
     tasks.append(new_task)
@@ -76,6 +81,8 @@ def update_task(task_id, new_name=None):
             if new_name is None:
                 new_name = generate_task_name()
             task.name = new_name
+            task.greenTask = greenTaskFn()
+            task.redTask = redTaskFn()
             return task
     return None
 
@@ -84,6 +91,18 @@ def update_longest_deadline_task():
         longest_deadline_task = max(tasks, key=lambda t: t.deadline)
         return update_task(longest_deadline_task.id)
     return None
+
+def greenTaskFn():
+    # global greenTitle
+    # global greenClass
+    # greenTitle = True
+    return "bg-green-100 text-green-800"
+
+def redTaskFn():
+    # global redTitle
+    # global redClass
+    # redTitle = True
+    return "bg-red-100 text-red-800"
 
 @app.get("/")
 def home():
@@ -104,7 +123,7 @@ def home():
                             data.tasks.forEach(task => {
                                 const row = document.createElement('tr');
                                 row.innerHTML = `
-                                    <td class="px-6 py-4">${task.name}</td>
+                                    <td class="px-6 py-4 ${task.greenTask} bg-green-500">${task.name}</td>
                                     <td class="px-6 py-4">${task.deadline} days</td>
                                     <td class="px-6 py-4">
                                         <div class="px-3 py-1 rounded-full text-sm inline-block 
@@ -139,7 +158,8 @@ def home():
                 }
                 
                 function deleteLongestDeadlineTask() {
-                    fetch('/delete_longest_deadline_task', { method: 'POST' })
+                    fetch('/delete_longestfrom 'tasks.json' as db
+_deadline_task', { method: 'POST' })
                         .then(() => updateTasks());
                 }
                 
