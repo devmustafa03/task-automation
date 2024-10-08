@@ -8,6 +8,7 @@ import os
 import groq
 from dotenv import load_dotenv
 import json
+import time
 
 load_dotenv()
 
@@ -21,13 +22,10 @@ class Task:
     name: str
     deadline: int
     status: TaskStatus
-    greenTask: str
-    redTask: str
+    highlight: str = ""
 
-tasks: List[Task] = [
-    # Task(1, "Create a new landing page", 3, TaskStatus.NOT_DONE),
-]
-task_id_counter = 2
+tasks: List[Task] = []
+task_id_counter = 1
 
 groq_client = groq.Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
@@ -57,9 +55,6 @@ def generate_task():
         name=task_name,
         deadline=random.randint(0, 999),
         status=random.choice([TaskStatus.DONE, TaskStatus.NOT_DONE]),
-        greenTask = "",
-        redTask=""
-        
     )
     task_id_counter += 1
     tasks.append(new_task)
@@ -81,8 +76,7 @@ def update_task(task_id, new_name=None):
             if new_name is None:
                 new_name = generate_task_name()
             task.name = new_name
-            task.greenTask = greenTaskFn()
-            task.redTask = redTaskFn()
+            task.highlight = "green"
             return task
     return None
 
@@ -91,18 +85,6 @@ def update_longest_deadline_task():
         longest_deadline_task = max(tasks, key=lambda t: t.deadline)
         return update_task(longest_deadline_task.id)
     return None
-
-def greenTaskFn():
-    # global greenTitle
-    # global greenClass
-    # greenTitle = True
-    return "bg-green-100 text-green-800"
-
-def redTaskFn():
-    # global redTitle
-    # global redClass
-    # redTitle = True
-    return "bg-red-100 text-red-800"
 
 @app.get("/")
 def home():
@@ -122,8 +104,14 @@ def home():
                             tbody.innerHTML = '';
                             data.tasks.forEach(task => {
                                 const row = document.createElement('tr');
+                                let highlightTask = '';
+                                if (task.highlight === 'green') {
+                                    highlightTask = 'bg-green-200';
+                                } else if (task.highlight === 'red') {
+                                    highlightTask = 'bg-red-200';
+                                }
                                 row.innerHTML = `
-                                    <td class="px-6 py-4 ${task.greenTask} bg-green-500">${task.name}</td>
+                                    <td class="px-6 py-4 ${highlightTask}">${task.name}</td>
                                     <td class="px-6 py-4">${task.deadline} days</td>
                                     <td class="px-6 py-4">
                                         <div class="px-3 py-1 rounded-full text-sm inline-block 
@@ -158,14 +146,25 @@ def home():
                 }
                 
                 function deleteLongestDeadlineTask() {
-                    fetch('/delete_longestfrom 'tasks.json' as db
-_deadline_task', { method: 'POST' })
+                    fetch('/delete_longest_deadline_task', { method: 'POST' })
                         .then(() => updateTasks());
                 }
                 
                 function updateLongestDeadlineTask() {
                     fetch('/update_longest_deadline_task', { method: 'POST' })
-                        .then(() => updateTasks());
+                        .then(() => {
+                            updateTasks();
+                            setTimeout(() => {
+                                fetch('/set_highlight_red', { method: 'POST' })
+                                    .then(() => {
+                                        updateTasks();
+                                        setTimeout(() => {
+                                            fetch('/clear_highlight', { method: 'POST' })
+                                                .then(() => updateTasks());
+                                        }, 3000);
+                                    });
+                            }, 3000);
+                        });
                 }
                 
                 setInterval(updateTasks, 30000);
@@ -223,7 +222,8 @@ def get_tasks():
                 "id": task.id,
                 "name": task.name,
                 "deadline": task.deadline,
-                "status": task.status.value
+                "status": task.status.value,
+                "highlight": task.highlight
             } for task in reversed(tasks)
         ]
     })
@@ -247,6 +247,20 @@ def delete_longest_deadline_task_endpoint():
 def update_longest_deadline_task_endpoint():
     updated_task = update_longest_deadline_task()
     return f"Task updated: {updated_task.name}" if updated_task else "No tasks to update"
+
+@app.post("/set_highlight_red")
+def set_highlight_red():
+    if tasks:
+        longest_deadline_task = max(tasks, key=lambda t: t.deadline)
+        longest_deadline_task.highlight = "red"
+    return "Highlight set to red"
+
+@app.post("/clear_highlight")
+def clear_highlight():
+    if tasks:
+        longest_deadline_task = max(tasks, key=lambda t: t.deadline)
+        longest_deadline_task.highlight = ""
+    return "Highlight cleared"
 
 if __name__ == "__main__":
     try:
